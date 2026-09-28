@@ -5,6 +5,7 @@ import {
   executeAlgorithmWithInput,
   generateRandomArray,
 } from '@/app/algorithmPipeline'
+import { materializeSteps } from '@/algorithms'
 import { sortAscending } from '@/algorithms/__tests__/fixtures'
 
 const algorithmIds = ['bubble-sort', 'insertion-sort', 'selection-sort', 'merge-sort', 'quick-sort'] as const
@@ -73,7 +74,7 @@ describe('algorithm pipeline preview', () => {
 
   it('preserves insertion compare phase, then reports shift and insert operations', () => {
     const execution = executeAlgorithmWithInput('insertion-sort', [5, 3, 4, 1])
-    const passSteps = execution.steps.filter((step) => step.metadata?.pass === 3)
+    const passSteps = materializeSteps(execution.steps).filter((step) => step.metadata?.pass === 3)
     const compareSteps = passSteps.filter((step) => step.metadata?.operation === 'compare')
     const shiftSteps = passSteps.filter((step) => step.metadata?.operation === 'shift')
 

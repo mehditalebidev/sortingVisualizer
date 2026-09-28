@@ -711,3 +711,17 @@ Use this file to record every completed subtask/task/feature.
 - Result: celebration.ts 100% lines / 95.8% branches; sound.ts 100% lines / 100% branches; bootstrap.ts 94.3% lines / 85.2% branches. F12 complete.
 - Risks/notes: Skills: no local `skills/` directory present; followed AGENTS.md architecture and UI sanity checklist (verified desktop 1280px and mobile 390px via headless Chromium screenshots).
 - Next smallest iteration: BF-MEM-004 step memory blow-up for large quadratic runs.
+
+### 2026-09-28 - BF-MEM-004 Compact step tracks + BF-TC-005 typecheck gate
+- Scope: Replaced per-step full snapshots at runtime with a compact, checkpointed `StepTrack`; algorithms emit into a sink; playback, stats, pipeline, and compare mode consume a `StepSequence`. Fixed the typecheck script, which compiled zero files.
+- Files changed: `src/algorithms/stepTrack.ts`, `src/algorithms/stepTrack.test.ts`, `src/algorithms/contracts.ts`, `src/algorithms/index.ts`, `src/algorithms/runner.ts`, `src/algorithms/runner.test.ts`, `src/algorithms/{bubble,insertion,selection,merge,quick}Sort.ts`, `src/algorithms/insertionSort.test.ts`, `src/algorithms/stepStats.ts`, `src/visualizer/playback.ts`, `src/visualizer/playback.test.ts`, `src/app/algorithmPipeline.ts`, `src/app/algorithmPipeline.test.ts`, `src/app/compareSession.ts`, `src/app/compareSession.test.ts`, `src/app/compareOrchestrator.ts`, `src/app/bootstrap.ts`, `package.json`
+- Tests added/updated: Step-track equivalence matrix (5 algorithms x fixtures + seeded random inputs x 4 checkpoint intervals x forward/backward/random access), Array.at index semantics, caching, metadata edge cases, buffer growth, post-finish guard, large-run smoke test; runner compact-path equality; playback over compact tracks, complete/empty/no-op branches; insertion sort sparse-input tolerance.
+- Verification:
+  - lint: Passed via `npm run lint`
+  - test: Passed via `npm run test` (228 tests)
+  - test:coverage: Passed via `npm run test:coverage` (stepTrack.ts 100% lines / 83% branches, playback.ts 100% / 93.8%, insertionSort.ts 97% / 91.7%)
+  - typecheck: Passed via `npm run typecheck` (now actually checks `tsconfig.app.json` and `tsconfig.node.json`)
+  - build: Passed via `npm run build`
+- Result: Bubble Sort at n=1000 records ~752k steps in ~0.3 s using ~56 MB (previously ~6 GB extrapolated). Browser check at n=1000 for all algorithms: no errors, page heap 9-103 MB.
+- Risks/notes: The iteration touches more than 6 source files because the step contract is shared by every algorithm and consumer; changes are mechanical and guarded by the equivalence matrix. Dragging the size slider near 1000 on quadratic algorithms still re-records on every input event (~0.3-1 s each), which can feel sluggish.
+- Next smallest iteration: Debounce re-recording while the size slider is dragged; then step scrubbing.

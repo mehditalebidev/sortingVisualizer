@@ -131,7 +131,8 @@ Execution rules:
 | BF-INS-001 | High | Done | Fix Insertion Sort to animate shift-then-insert movement instead of bar-height mutation artifacts | `docs/coordination/BUGFIXES.md` |
 | BF-RES-002 | Medium | Done | Window resize listener was only registered when autoplay was enabled | `docs/coordination/BUGFIXES.md` |
 | BF-CMP-003 | Low | Done | Compare canvases were capped at 380px leaving empty panel space | `docs/coordination/BUGFIXES.md` |
-| BF-MEM-004 | High | Backlog | Full snapshot per step makes large quadratic runs use gigabytes of memory | `docs/coordination/BUGFIXES.md` |
+| BF-MEM-004 | High | Done | Full snapshot per step makes large quadratic runs use gigabytes of memory | `docs/coordination/BUGFIXES.md` |
+| BF-TC-005 | High | Done | Typecheck script compiled zero files due to solution-style tsconfig | `docs/coordination/BUGFIXES.md` |
 
 ## F1 Task Breakdown
 

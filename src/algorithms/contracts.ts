@@ -41,8 +41,21 @@ export type SortingAlgorithmId =
 
 export type SortAlgorithmRunner = (input: readonly number[]) => SortStep[]
 
+export type SortStepSink = {
+  push: (
+    values: readonly number[],
+    comparedIndices: readonly number[],
+    modifiedIndices: readonly number[],
+    metadata?: SortStepMetadata,
+  ) => void
+}
+
+export type SortStepEmitter = (input: readonly number[], sink: SortStepSink) => void
+
 export type SortingAlgorithmDefinition = {
   id: SortingAlgorithmId
   name: string
+  /** Materializes every step with a full snapshot. Prefer `emit` + a step track for large inputs. */
   run: SortAlgorithmRunner
+  emit: SortStepEmitter
 }

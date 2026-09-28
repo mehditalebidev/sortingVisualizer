@@ -159,7 +159,7 @@ export const bootstrapApp = (root: HTMLDivElement, options: BootstrapOptions = {
   let execution = executeAlgorithmWithInput(selectedAlgorithmId, currentInput)
   let playback = createPlaybackController(execution.steps)
   let stepStats = buildCumulativeStepStats(execution.steps)
-  let initialIndexLookup = buildInitialIndexLookup(execution.steps[0]?.snapshot ?? currentInput)
+  let initialIndexLookup = buildInitialIndexLookup(execution.steps.at(0)?.snapshot ?? currentInput)
   let tickIntervalId: number | undefined
   let animationFrameId: number | undefined
   let activeTransition: ActiveTransition | undefined
@@ -456,7 +456,7 @@ export const bootstrapApp = (root: HTMLDivElement, options: BootstrapOptions = {
     execution = executeAlgorithmWithInput(selectedAlgorithmId, currentInput)
     playback = createPlaybackController(execution.steps)
     stepStats = buildCumulativeStepStats(execution.steps)
-    initialIndexLookup = buildInitialIndexLookup(execution.steps[0]?.snapshot ?? currentInput)
+    initialIndexLookup = buildInitialIndexLookup(execution.steps.at(0)?.snapshot ?? currentInput)
     appStatus = playback.reset().status
     renderCurrentFrame()
   }

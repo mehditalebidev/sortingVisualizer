@@ -1,30 +1,17 @@
-import type { SortRange, SortStep, SortStepMetadata } from '@/algorithms/contracts'
-
-const createStep = (
-  values: readonly number[],
-  comparedIndices: readonly number[],
-  modifiedIndices: readonly number[],
-  metadata?: SortStepMetadata,
-): SortStep => {
-  return {
-    snapshot: [...values],
-    comparedIndices: [...comparedIndices],
-    modifiedIndices: [...modifiedIndices],
-    metadata,
-  }
-}
+import type { SortRange, SortStep } from '@/algorithms/contracts'
+import { collectSteps, type StepSink } from '@/algorithms/stepTrack'
 
 const createRange = (start: number, end: number): SortRange => {
   return { start, end }
 }
 
-export const quickSortSteps = (input: readonly number[]): SortStep[] => {
+export const emitQuickSort = (input: readonly number[], sink: StepSink): void => {
   const values = [...input]
-  const steps: SortStep[] = [createStep(values, [], [], { operation: 'start' })]
+  sink.push(values, [], [], { operation: 'start' })
 
   if (values.length < 2) {
-    steps.push(createStep(values, [], [], { operation: 'sorted' }))
-    return steps
+    sink.push(values, [], [], { operation: 'sorted' })
+    return
   }
 
   const partition = (start: number, end: number): number => {
@@ -35,13 +22,11 @@ export const quickSortSteps = (input: readonly number[]): SortStep[] => {
       return start
     }
 
-    steps.push(
-      createStep(values, [], [], {
-        operation: 'partition',
-        range,
-        pivotIndex: end,
-      }),
-    )
+    sink.push(values, [], [], {
+      operation: 'partition',
+      range,
+      pivotIndex: end,
+    })
 
     let smallerIndex = start
 
@@ -52,13 +37,11 @@ export const quickSortSteps = (input: readonly number[]): SortStep[] => {
         continue
       }
 
-      steps.push(
-        createStep(values, [scanIndex, end], [], {
-          operation: 'compare',
-          range,
-          pivotIndex: end,
-        }),
-      )
+      sink.push(values, [scanIndex, end], [], {
+        operation: 'compare',
+        range,
+        pivotIndex: end,
+      })
 
       if (scanValue <= pivotValue) {
         if (smallerIndex !== scanIndex) {
@@ -67,13 +50,11 @@ export const quickSortSteps = (input: readonly number[]): SortStep[] => {
           if (leftValue !== undefined) {
             values[smallerIndex] = scanValue
             values[scanIndex] = leftValue
-            steps.push(
-              createStep(values, [smallerIndex, scanIndex], [smallerIndex, scanIndex], {
-                operation: 'swap',
-                range,
-                pivotIndex: end,
-              }),
-            )
+            sink.push(values, [smallerIndex, scanIndex], [smallerIndex, scanIndex], {
+              operation: 'swap',
+              range,
+              pivotIndex: end,
+            })
           }
         }
 
@@ -86,24 +67,20 @@ export const quickSortSteps = (input: readonly number[]): SortStep[] => {
     if (valueAtSmallerIndex !== undefined && smallerIndex !== end) {
       values[smallerIndex] = pivotValue
       values[end] = valueAtSmallerIndex
-      steps.push(
-        createStep(values, [smallerIndex, end], [smallerIndex, end], {
-          operation: 'swap',
-          range,
-          pivotIndex: smallerIndex,
-          partitionIndex: smallerIndex,
-        }),
-      )
-    }
-
-    steps.push(
-      createStep(values, [], [smallerIndex], {
-        operation: 'partition-complete',
+      sink.push(values, [smallerIndex, end], [smallerIndex, end], {
+        operation: 'swap',
         range,
         pivotIndex: smallerIndex,
         partitionIndex: smallerIndex,
-      }),
-    )
+      })
+    }
+
+    sink.push(values, [], [smallerIndex], {
+      operation: 'partition-complete',
+      range,
+      pivotIndex: smallerIndex,
+      partitionIndex: smallerIndex,
+    })
 
     return smallerIndex
   }
@@ -114,28 +91,26 @@ export const quickSortSteps = (input: readonly number[]): SortStep[] => {
     }
 
     if (start === end) {
-      steps.push(
-        createStep(values, [], [start], {
-          operation: 'range-sorted',
-          range: createRange(start, end),
-        }),
-      )
+      sink.push(values, [], [start], {
+        operation: 'range-sorted',
+        range: createRange(start, end),
+      })
       return
     }
 
     const partitionIndex = partition(start, end)
     sortRange(start, partitionIndex - 1)
     sortRange(partitionIndex + 1, end)
-    steps.push(
-      createStep(values, [], [partitionIndex], {
-        operation: 'range-sorted',
-        range: createRange(start, end),
-        partitionIndex,
-      }),
-    )
+    sink.push(values, [], [partitionIndex], {
+      operation: 'range-sorted',
+      range: createRange(start, end),
+      partitionIndex,
+    })
   }
 
   sortRange(0, values.length - 1)
-  steps.push(createStep(values, [], [], { operation: 'sorted' }))
-  return steps
+  sink.push(values, [], [], { operation: 'sorted' })
+  return
 }
+
+export const quickSortSteps = (input: readonly number[]): SortStep[] => collectSteps(input, emitQuickSort)

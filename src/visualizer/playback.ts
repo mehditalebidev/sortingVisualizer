@@ -1,4 +1,4 @@
-import type { SortStep } from '@/algorithms'
+import type { SortStep, StepSequence } from '@/algorithms'
 import type { PlaybackStatus } from '@/state'
 
 export type PlaybackState = {
@@ -27,19 +27,20 @@ const fallbackStep: SortStep = {
 }
 
 const toPlaybackState = (
-  steps: readonly SortStep[],
+  steps: StepSequence,
   stepIndex: number,
   status: PlaybackStatus,
 ): PlaybackState => {
   return {
     status,
     stepIndex,
-    step: steps[stepIndex] ?? fallbackStep,
+    step: steps.at(stepIndex) ?? fallbackStep,
   }
 }
 
-export const createPlaybackController = (inputSteps: readonly SortStep[]): PlaybackController => {
-  const steps = inputSteps.length > 0 ? [...inputSteps] : [fallbackStep]
+export const createPlaybackController = (inputSteps: StepSequence): PlaybackController => {
+  // Steps are read lazily; compact step tracks must not be copied into arrays.
+  const steps: StepSequence = inputSteps.length > 0 ? inputSteps : [fallbackStep]
   const lastStepIndex = steps.length - 1
 
   let stepIndex = 0

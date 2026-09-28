@@ -6,7 +6,7 @@ This roadmap defines high-level milestones and feature-level delivery for the So
 
 - Completed features: F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12.
 - Active feature: None.
-- Recommended next track: BF-MEM-003 (step memory blow-up for large quadratic runs), then step-by-step scrubbing and input presets.
+- Recommended next track: debounce size-slider re-recording, then step-by-step scrubbing (cheap via checkpointed step tracks) and input presets.
 - Post-v1 algorithm expansion delivered: Merge Sort and Quick Sort are complete.
 
 ## Milestones

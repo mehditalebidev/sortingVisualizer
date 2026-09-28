@@ -1,26 +1,13 @@
-import type { SortStep, SortStepMetadata } from '@/algorithms/contracts'
+import type { SortStep } from '@/algorithms/contracts'
+import { collectSteps, type StepSink } from '@/algorithms/stepTrack'
 
-const createStep = (
-  values: readonly number[],
-  comparedIndices: readonly number[],
-  modifiedIndices: readonly number[],
-  metadata?: SortStepMetadata,
-): SortStep => {
-  return {
-    snapshot: [...values],
-    comparedIndices: [...comparedIndices],
-    modifiedIndices: [...modifiedIndices],
-    metadata,
-  }
-}
-
-export const insertionSortSteps = (input: readonly number[]): SortStep[] => {
+export const emitInsertionSort = (input: readonly number[], sink: StepSink): void => {
   const values = [...input]
-  const steps: SortStep[] = [createStep(values, [], [], { operation: 'start' })]
+  sink.push(values, [], [], { operation: 'start' })
 
   if (values.length < 2) {
-    steps.push(createStep(values, [], [], { operation: 'sorted' }))
-    return steps
+    sink.push(values, [], [], { operation: 'sorted' })
+    return
   }
 
   for (let pass = 1; pass < values.length; pass += 1) {
@@ -40,7 +27,7 @@ export const insertionSortSteps = (input: readonly number[]): SortStep[] => {
         break
       }
 
-      steps.push(createStep(values, [leftIndex, pass], [], { operation: 'compare', pass }))
+      sink.push(values, [leftIndex, pass], [], { operation: 'compare', pass })
 
       if (leftValue <= key) {
         break
@@ -60,18 +47,18 @@ export const insertionSortSteps = (input: readonly number[]): SortStep[] => {
 
       values[leftIndex] = rightValue
       values[index] = leftValue
-      steps.push(
-        createStep(values, [leftIndex, index], [leftIndex, index], {
-          operation: 'shift',
-          pass,
-        }),
-      )
+      sink.push(values, [leftIndex, index], [leftIndex, index], {
+        operation: 'shift',
+        pass,
+      })
     }
 
-    steps.push(createStep(values, [], [insertionIndex], { operation: 'insert', pass }))
-    steps.push(createStep(values, [], [insertionIndex], { operation: 'pass-complete', pass }))
+    sink.push(values, [], [insertionIndex], { operation: 'insert', pass })
+    sink.push(values, [], [insertionIndex], { operation: 'pass-complete', pass })
   }
 
-  steps.push(createStep(values, [], [], { operation: 'sorted' }))
-  return steps
+  sink.push(values, [], [], { operation: 'sorted' })
+  return
 }
+
+export const insertionSortSteps = (input: readonly number[]): SortStep[] => collectSteps(input, emitInsertionSort)

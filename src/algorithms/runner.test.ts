@@ -2,6 +2,13 @@ import { describe, expect, it } from 'vitest'
 
 import {
   bubbleSortSteps,
+  emitBubbleSort,
+  emitInsertionSort,
+  emitMergeSort,
+  emitQuickSort,
+  emitSelectionSort,
+  materializeSteps,
+  recordAlgorithm,
   getAlgorithmById,
   insertionSortSteps,
   listAlgorithms,
@@ -19,26 +26,31 @@ describe('algorithm runner', () => {
         id: 'bubble-sort',
         name: 'Bubble Sort',
         run: bubbleSortSteps,
+        emit: emitBubbleSort,
       },
       {
         id: 'insertion-sort',
         name: 'Insertion Sort',
         run: insertionSortSteps,
+        emit: emitInsertionSort,
       },
       {
         id: 'selection-sort',
         name: 'Selection Sort',
         run: selectionSortSteps,
+        emit: emitSelectionSort,
       },
       {
         id: 'merge-sort',
         name: 'Merge Sort',
         run: mergeSortSteps,
+        emit: emitMergeSort,
       },
       {
         id: 'quick-sort',
         name: 'Quick Sort',
         run: quickSortSteps,
+        emit: emitQuickSort,
       },
     ])
   })
@@ -61,5 +73,6 @@ describe('algorithm runner', () => {
 
     expect(runAlgorithm(id, input)).toEqual(emitter(input))
     expect(runAlgorithm(id, input).at(-1)?.snapshot).toEqual(sortAscending(input))
+    expect(materializeSteps(recordAlgorithm(id, input))).toEqual(emitter(input))
   })
 })

@@ -1,4 +1,4 @@
-import { runAlgorithm, type SortStep, type SortingAlgorithmId } from '@/algorithms'
+import { recordAlgorithm, type SortingAlgorithmId, type StepSequence } from '@/algorithms'
 
 export type RandomArrayOptions = {
   size?: number
@@ -10,13 +10,13 @@ export type RandomArrayOptions = {
 export type AlgorithmPreview = {
   algorithmId: SortingAlgorithmId
   input: number[]
-  steps: SortStep[]
+  steps: StepSequence
 }
 
 export type AlgorithmExecution = {
   algorithmId: SortingAlgorithmId
   input: number[]
-  steps: SortStep[]
+  steps: StepSequence
 }
 
 const DEFAULT_RANDOM_OPTIONS: Required<RandomArrayOptions> = {
@@ -55,7 +55,7 @@ export const createAlgorithmPreview = (
   options: RandomArrayOptions = {},
 ): AlgorithmPreview => {
   const input = generateRandomArray(options)
-  const steps = runAlgorithm(algorithmId, input)
+  const steps = recordAlgorithm(algorithmId, input)
 
   return {
     algorithmId,
@@ -68,7 +68,7 @@ export const executeAlgorithmWithInput = (
   algorithmId: SortingAlgorithmId,
   input: readonly number[],
 ): AlgorithmExecution => {
-  const steps = runAlgorithm(algorithmId, input)
+  const steps = recordAlgorithm(algorithmId, input)
 
   return {
     algorithmId,
