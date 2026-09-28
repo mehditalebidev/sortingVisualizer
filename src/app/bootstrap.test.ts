@@ -473,5 +473,103 @@ describe('bootstrapApp', () => {
 
     document.dispatchEvent(new KeyboardEvent('keydown', { key: ' ' }))
   })
+
+  it('toggles sound, plays step blips while running, and a finish jingle with celebration frames', () => {
+    vi.useFakeTimers()
+    const frameCallbacks: FrameRequestCallback[] = []
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+      frameCallbacks.push(callback)
+      return frameCallbacks.length
+    })
+    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => undefined)
+    let enabled = false
+    const soundEngine = {
+      isEnabled: () => enabled,
+      setEnabled: vi.fn((next: boolean) => {
+        enabled = next
+      }),
+      playStep: vi.fn(),
+      playFinish: vi.fn(),
+    }
+    document.body.innerHTML = '<div id="app"></div>'
+
+    const root = document.querySelector<HTMLDivElement>('#app')
+
+    if (!root) {
+      throw new Error('Test root not found')
+    }
+
+    bootstrapApp(root, {
+      autoplay: false,
+      celebrate: true,
+      soundEngine,
+      defaultArraySize: 6,
+      defaultSpeed: 100,
+      previewOptions: {
+        minValue: 1,
+        maxValue: 9,
+        random: sequenceRandom([0.9, 0.7, 0.5, 0.3, 0.1, 0.0]),
+      },
+    })
+
+    const soundToggle = root.querySelector<HTMLButtonElement>('#sound-toggle')
+    expect(soundToggle?.getAttribute('aria-pressed')).toBe('false')
+    soundToggle?.click()
+    expect(soundEngine.setEnabled).toHaveBeenCalledWith(true)
+    expect(soundToggle?.getAttribute('aria-pressed')).toBe('true')
+    expect(soundToggle?.textContent).toContain('Sound on')
+
+    root.querySelector<HTMLButtonElement>('#start-button')?.click()
+    vi.advanceTimersByTime(2000)
+
+    expect(root.dataset.status).toBe('finished')
+    expect(soundEngine.playStep).toHaveBeenCalled()
+    expect(soundEngine.playFinish).toHaveBeenCalledOnce()
+
+    // Drain a couple of animation frames: celebration keeps requesting frames while active.
+    const pendingBefore = frameCallbacks.length
+    frameCallbacks.at(-1)?.(window.performance.now())
+    expect(frameCallbacks.length).toBeGreaterThan(pendingBefore)
+    frameCallbacks.at(-1)?.(window.performance.now() + 60_000)
+
+    root.querySelector<HTMLButtonElement>('#reset-button')?.click()
+    expect(root.dataset.status).toBe('idle')
+
+    soundToggle?.click()
+    expect(soundToggle?.getAttribute('aria-pressed')).toBe('false')
+    vi.useRealTimers()
+  })
+
+  it('skips the celebration when reduced motion is preferred', () => {
+    vi.useFakeTimers()
+    const requestAnimationFrameSpy = vi.spyOn(window, 'requestAnimationFrame').mockImplementation(() => 1)
+    vi.stubGlobal('matchMedia', vi.fn(() => ({ matches: true })))
+    document.body.innerHTML = '<div id="app"></div>'
+
+    const root = document.querySelector<HTMLDivElement>('#app')
+
+    if (!root) {
+      throw new Error('Test root not found')
+    }
+
+    bootstrapApp(root, {
+      autoplay: false,
+      defaultArraySize: 5,
+      defaultSpeed: 100,
+      previewOptions: {
+        minValue: 1,
+        maxValue: 9,
+        random: sequenceRandom([0.1, 0.3, 0.5, 0.7, 0.9]),
+      },
+    })
+
+    root.querySelector<HTMLButtonElement>('#start-button')?.click()
+    vi.advanceTimersByTime(2000)
+
+    expect(root.dataset.status).toBe('finished')
+    expect(requestAnimationFrameSpy).not.toHaveBeenCalled()
+    vi.unstubAllGlobals()
+    vi.useRealTimers()
+  })
 })
 

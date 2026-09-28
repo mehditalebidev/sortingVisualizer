@@ -20,8 +20,11 @@ import {
   transitionPlaybackStatus,
   type PlaybackStatus,
 } from '@/state'
+import { createSoundEngine, type SoundEngine } from '@/app/sound'
 import {
+  type Celebration,
   configureCanvasSurface,
+  createCelebration,
   createPlaybackController,
   defaultDimensions,
   defaultVisualSemantics,
@@ -37,6 +40,8 @@ export type BootstrapOptions = {
   defaultArraySize?: number
   defaultSpeed?: number
   previewOptions?: RandomArrayOptions
+  celebrate?: boolean
+  soundEngine?: SoundEngine
 }
 
 const MIN_ARRAY_SIZE = 5
@@ -158,6 +163,13 @@ export const bootstrapApp = (root: HTMLDivElement, options: BootstrapOptions = {
   let tickIntervalId: number | undefined
   let animationFrameId: number | undefined
   let activeTransition: ActiveTransition | undefined
+  let celebration: Celebration | undefined
+  const soundEngine = resolvedOptions.soundEngine ?? createSoundEngine()
+  const prefersReducedMotion = (): boolean => {
+    return typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  }
+  const shouldCelebrate = resolvedOptions.celebrate ?? !prefersReducedMotion()
+  let valueRange = { min: Math.min(...currentInput), max: Math.max(...currentInput) }
 
   root.innerHTML = `
     <main class="shell" data-status="${initialState.status}">
@@ -197,6 +209,7 @@ export const bootstrapApp = (root: HTMLDivElement, options: BootstrapOptions = {
           <button id="pause-button" type="button"><span class="btn-icon" aria-hidden="true">⏸</span>Pause</button>
           <button id="resume-button" type="button"><span class="btn-icon" aria-hidden="true">⏵</span>Resume</button>
           <button id="reset-button" type="button"><span class="btn-icon" aria-hidden="true">↺</span>Reset</button>
+          <button id="sound-toggle" class="icon-toggle" type="button" aria-pressed="false"><span class="btn-icon" aria-hidden="true">🔇</span><span class="sound-label">Sound off</span></button>
         </div>
       </section>
       <div class="workspace-grid">
@@ -261,6 +274,7 @@ export const bootstrapApp = (root: HTMLDivElement, options: BootstrapOptions = {
   const statProgress = root.querySelector<HTMLOutputElement>('#stat-progress')
   const progressTrack = root.querySelector<HTMLDivElement>('.progress-track')
   const progressFill = root.querySelector<HTMLDivElement>('#progress-fill')
+  const soundToggle = root.querySelector<HTMLButtonElement>('#sound-toggle')
 
   if (
     !canvas ||
@@ -281,7 +295,8 @@ export const bootstrapApp = (root: HTMLDivElement, options: BootstrapOptions = {
     !statMoves ||
     !statProgress ||
     !progressTrack ||
-    !progressFill
+    !progressFill ||
+    !soundToggle
   ) {
     return
   }
@@ -359,7 +374,7 @@ export const bootstrapApp = (root: HTMLDivElement, options: BootstrapOptions = {
       animationFrameId = undefined
       renderCurrentFrame(timestamp)
 
-      if (activeTransition) {
+      if (activeTransition || celebration?.isActive(timestamp)) {
         animationFrameId = window.requestAnimationFrame(renderTransitionFrame)
       }
     }
@@ -401,21 +416,43 @@ export const bootstrapApp = (root: HTMLDivElement, options: BootstrapOptions = {
       if (nextPlaybackState.status === 'finished' && appStatus !== 'finished') {
         appStatus = transitionPlaybackStatus(appStatus, 'finish')
         stopTimer()
+        beginCelebration()
+      } else if (nextPlaybackState.stepIndex !== previousPlaybackState.stepIndex) {
+        soundEngine.playStep(nextPlaybackState.step, valueRange.min, valueRange.max)
       }
 
       if (activeTransition) {
         ensureTransitionAnimationLoop()
       } else {
         renderCurrentFrame(window.performance.now())
+
+        if (celebration) {
+          ensureTransitionAnimationLoop()
+        }
       }
     }, playbackIntervalMs)
+  }
+
+  const beginCelebration = (): void => {
+    soundEngine.playFinish()
+
+    if (!shouldCelebrate) {
+      return
+    }
+
+    celebration = createCelebration({
+      startedAtMs: window.performance.now(),
+      dimensions: { width: surface.cssWidth, height: surface.cssHeight },
+    })
   }
 
   const resetExecution = (input: readonly number[]): void => {
     stopTimer()
     stopAnimationFrame()
     activeTransition = undefined
+    celebration = undefined
     currentInput = [...input]
+    valueRange = { min: Math.min(...currentInput), max: Math.max(...currentInput) }
     execution = executeAlgorithmWithInput(selectedAlgorithmId, currentInput)
     playback = createPlaybackController(execution.steps)
     stepStats = buildCumulativeStepStats(execution.steps)
@@ -438,7 +475,7 @@ export const bootstrapApp = (root: HTMLDivElement, options: BootstrapOptions = {
 
   const renderCurrentFrame = (timestampMs = window.performance.now()): void => {
     const playbackState = playback.getState()
-    const states = mapStepToBarStates(playbackState.step, playbackState.status)
+    let states = mapStepToBarStates(playbackState.step, playbackState.status)
     let transition: RenderTransition | undefined
 
     if (activeTransition) {
@@ -455,6 +492,14 @@ export const bootstrapApp = (root: HTMLDivElement, options: BootstrapOptions = {
       }
     }
 
+    if (celebration && !celebration.isActive(timestampMs)) {
+      celebration = undefined
+    }
+
+    if (celebration) {
+      states = celebration.applySweep(states, timestampMs)
+    }
+
     renderBarsFrame(
       surface.context,
       {
@@ -469,6 +514,7 @@ export const bootstrapApp = (root: HTMLDivElement, options: BootstrapOptions = {
       defaultVisualSemantics,
       transition,
     )
+    celebration?.draw(surface.context, timestampMs)
 
     const algorithmName = algorithmMap.get(selectedAlgorithmId)?.name ?? selectedAlgorithmId
     summary.textContent = `${algorithmName} ${appStatus} at step ${playbackState.stepIndex + 1}/${execution.steps.length}.`
@@ -492,6 +538,7 @@ export const bootstrapApp = (root: HTMLDivElement, options: BootstrapOptions = {
     }
 
     const nextPlaybackState = playback.start()
+    celebration = undefined
     appStatus = transitionPlaybackStatus(appStatus, 'start')
     appStatus = nextPlaybackState.status
 
@@ -545,8 +592,31 @@ export const bootstrapApp = (root: HTMLDivElement, options: BootstrapOptions = {
     stopTimer()
     stopAnimationFrame()
     activeTransition = undefined
+    celebration = undefined
     renderCurrentFrame()
   }
+
+  const updateSoundToggle = (): void => {
+    const enabled = soundEngine.isEnabled()
+    const icon = soundToggle.querySelector('.btn-icon')
+    const label = soundToggle.querySelector('.sound-label')
+
+    soundToggle.setAttribute('aria-pressed', String(enabled))
+
+    if (icon) {
+      icon.textContent = enabled ? '🔊' : '🔇'
+    }
+
+    if (label) {
+      label.textContent = enabled ? 'Sound on' : 'Sound off'
+    }
+  }
+
+  soundToggle.addEventListener('click', () => {
+    soundEngine.setEnabled(!soundEngine.isEnabled())
+    updateSoundToggle()
+  })
+  updateSoundToggle()
 
   algorithmSelect.addEventListener('change', () => {
     selectedAlgorithmId = algorithmSelect.value as SortingAlgorithmId
