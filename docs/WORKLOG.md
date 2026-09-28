@@ -669,3 +669,45 @@ Use this file to record every completed subtask/task/feature.
 - Result: F9 and F10 are now fully complete; compare mode provides synchronized, fair multi-algorithm execution with stable parallel rendering and full shared controls.
 - Risks/notes: Coverage for touched compare files now meets the >=80% lines/branches threshold; global repository branch coverage remains influenced by legacy untouched modules.
 - Next smallest iteration: Start next roadmap track beyond F11 (new feature planning or bugfix queue prioritization).
+
+### 2026-09-28 - F12-T1 Vibrant canvas renderer and theme
+- Scope: Value-mapped hue bars, rounded tops, glow for compared/modified, gradient background with grid lines, minimum visible bar height, dark arcade stylesheet, fonts and favicon.
+- Files changed: `src/visualizer/renderModel.ts`, `src/visualizer/renderModel.test.ts`, `src/visualizer/barRenderer.ts`, `src/visualizer/barRenderer.test.ts`, `src/style.css`, `index.html`
+- Tests added/updated: Renderer tests use flat semantics for positional assertions; added tests for gradient/grid/glow ordering, square-bar fallback, normalized values, hue mapping, and interpolation fallbacks.
+- Verification:
+  - lint: Passed via `npm run lint`
+  - test: Passed via `npm run test`
+  - test:coverage: Passed via `npm run test:coverage`
+  - typecheck: Passed via `npm run typecheck`
+  - build: Passed via `npm run build`
+- Result: barRenderer.ts 98.5% lines / 90.4% branches; renderModel.ts 100% / 91.3%.
+- Risks/notes: Skills: no local `skills/` directory present; followed AGENTS.md architecture and UI sanity checklist (verified desktop 1280px and mobile 390px via headless Chromium screenshots).
+- Next smallest iteration: F12-T2
+
+### 2026-09-28 - F12-T2 Live stats HUD, progress, keyboard shortcuts, resize fix
+- Scope: Cumulative comparison/move stats module, stats chips + progress bar, Space/R/Esc shortcuts, resize listener fix (BF-RES-002), icon buttons.
+- Files changed: `src/algorithms/stepStats.ts`, `src/algorithms/stepStats.test.ts`, `src/algorithms/index.ts`, `src/app/bootstrap.ts`, `src/app/bootstrap.test.ts`, `src/style.css`
+- Tests added/updated: Stats accumulation/clamping tests; bootstrap tests for HUD completion values, keyboard mapping and gating, resize re-render and listener cleanup.
+- Verification:
+  - lint: Passed via `npm run lint`
+  - test: Passed via `npm run test`
+  - test:coverage: Passed via `npm run test:coverage`
+  - typecheck: Passed via `npm run typecheck`
+  - build: Passed via `npm run build`
+- Result: stepStats.ts 100% lines / 83% branches.
+- Risks/notes: Skills: no local `skills/` directory present; followed AGENTS.md architecture and UI sanity checklist (verified desktop 1280px and mobile 390px via headless Chromium screenshots).
+- Next smallest iteration: F12-T3
+
+### 2026-09-28 - F12-T3 Completion celebration and optional sound
+- Scope: Victory sweep + confetti on finish (reduced-motion aware), Web Audio blips and finish arpeggio behind an off-by-default toggle, compare canvas width fix (BF-CMP-003).
+- Files changed: `src/visualizer/celebration.ts`, `src/visualizer/celebration.test.ts`, `src/visualizer/index.ts`, `src/app/sound.ts`, `src/app/sound.test.ts`, `src/app/bootstrap.ts`, `src/app/bootstrap.test.ts`, `src/app/compareBootstrap.ts`
+- Tests added/updated: Celebration timing/sweep/draw tests; sound engine mapping, throttling, gating, and graceful degradation tests; bootstrap integration tests for sound toggle, finish jingle, celebration frames, and reduced motion.
+- Verification:
+  - lint: Passed via `npm run lint`
+  - test: Passed via `npm run test`
+  - test:coverage: Passed via `npm run test:coverage`
+  - typecheck: Passed via `npm run typecheck`
+  - build: Passed via `npm run build`
+- Result: celebration.ts 100% lines / 95.8% branches; sound.ts 100% lines / 100% branches; bootstrap.ts 94.3% lines / 85.2% branches. F12 complete.
+- Risks/notes: Skills: no local `skills/` directory present; followed AGENTS.md architecture and UI sanity checklist (verified desktop 1280px and mobile 390px via headless Chromium screenshots).
+- Next smallest iteration: BF-MEM-004 step memory blow-up for large quadratic runs.

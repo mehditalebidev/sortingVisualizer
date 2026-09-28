@@ -29,6 +29,7 @@ Execution rules:
 | F9 | Comparison Page Foundation and Algorithm Selection | M7 | Done | Compare route now includes typed selection state, checkbox multi-select, dynamic responsive panel grid, shared controls, and regression tests |
 | F10 | Synchronized Multi-Algorithm Execution and Rendering | M7 | Done | Shared-input compare sessions now execute concurrently with synchronized control fan-out and divergent completion handling |
 | F11 | Comparative Metadata UX and Hardening | M7 | Done | Central metadata registry, compare-panel headers, responsive readability polish, and compare regression coverage |
+| F12 | Playful Visual Refresh and Engagement | M8 | Done | Arcade theme, glowing value-colored bars, stats HUD, shortcuts, celebration, optional sound |
 
 ## Current Iteration Queue
 
@@ -128,6 +129,9 @@ Execution rules:
 | ID | Priority | Status | Summary | Source |
 | --- | --- | --- | --- | --- |
 | BF-INS-001 | High | Done | Fix Insertion Sort to animate shift-then-insert movement instead of bar-height mutation artifacts | `docs/coordination/BUGFIXES.md` |
+| BF-RES-002 | Medium | Done | Window resize listener was only registered when autoplay was enabled | `docs/coordination/BUGFIXES.md` |
+| BF-CMP-003 | Low | Done | Compare canvases were capped at 380px leaving empty panel space | `docs/coordination/BUGFIXES.md` |
+| BF-MEM-004 | High | Backlog | Full snapshot per step makes large quadratic runs use gigabytes of memory | `docs/coordination/BUGFIXES.md` |
 
 ## F1 Task Breakdown
 
@@ -388,6 +392,16 @@ Task policy for F11:
 
 Reference:
 - Full user-story level definitions: `docs/coordination/FEATURES.md`
+
+## F12 Task Breakdown
+
+Feature: F12 - Playful Visual Refresh and Engagement
+
+| ID | Task | Status | Worklog |
+| --- | --- | --- | --- |
+| F12-T1 | Vibrant canvas renderer and theme | Done | 2026-09-28 F12-T1 |
+| F12-T2 | Live stats HUD, progress, keyboard shortcuts, resize fix | Done | 2026-09-28 F12-T2 |
+| F12-T3 | Completion celebration and optional sound | Done | 2026-09-28 F12-T3 |
 
 ## Blockers
 
