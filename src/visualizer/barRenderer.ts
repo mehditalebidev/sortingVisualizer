@@ -1,4 +1,4 @@
-import type { BarVisualState, VisualSemantics } from '@/visualizer/renderModel'
+import { resolveBarColor, type BarVisualState, type VisualSemantics } from '@/visualizer/renderModel'
 import type { SortStepOperation } from '@/algorithms'
 
 export type RenderDimensions = {
@@ -13,6 +13,7 @@ export type BarDescriptor = {
   y: number
   width: number
   height: number
+  normalizedValue: number
   state: BarVisualState
 }
 
@@ -39,6 +40,11 @@ const HORIZONTAL_PADDING = 12
 const VERTICAL_PADDING = 12
 const BAR_GAP = 2
 const MIN_BAR_HEIGHT = 1
+// Keep the smallest value visible instead of collapsing it to a 1px sliver.
+const MIN_BAR_HEIGHT_RATIO = 0.04
+const GRID_LINE_COUNT = 4
+const MAX_CORNER_RADIUS = 6
+const GLOW_BLUR = 14
 
 const clampProgress = (value: number): number => {
   if (!Number.isFinite(value)) {
@@ -195,7 +201,8 @@ export const createBarDescriptors = (
 
   return snapshot.map((value, index) => {
     const normalizedValue = normalizeValue(value, minValue, maxValue)
-    const barHeight = Math.max(MIN_BAR_HEIGHT, normalizedValue * drawableHeight)
+    const heightRatio = MIN_BAR_HEIGHT_RATIO + (1 - MIN_BAR_HEIGHT_RATIO) * normalizedValue
+    const barHeight = Math.max(MIN_BAR_HEIGHT, heightRatio * drawableHeight)
     const barWidth = Math.max(1, slotWidth - BAR_GAP)
     const offsetX = options.xOffsets?.[index] ?? 0
     const x = HORIZONTAL_PADDING + index * slotWidth + BAR_GAP / 2 + offsetX
@@ -208,9 +215,65 @@ export const createBarDescriptors = (
       y,
       width: barWidth,
       height: barHeight,
+      normalizedValue,
       state: states[index] ?? 'neutral',
     }
   })
+}
+
+const paintBackground = (
+  context: CanvasRenderingContext2D,
+  dimensions: RenderDimensions,
+  semantics: VisualSemantics,
+): void => {
+  if (semantics.backgroundAccentColor && typeof context.createLinearGradient === 'function') {
+    const gradient = context.createLinearGradient(0, 0, 0, dimensions.height)
+    gradient.addColorStop(0, semantics.backgroundAccentColor)
+    gradient.addColorStop(1, semantics.backgroundColor)
+    context.fillStyle = gradient
+  } else {
+    context.fillStyle = semantics.backgroundColor
+  }
+
+  context.fillRect(0, 0, dimensions.width, dimensions.height)
+
+  if (!semantics.gridColor) {
+    return
+  }
+
+  const drawableHeight = Math.max(0, dimensions.height - VERTICAL_PADDING * 2)
+  context.fillStyle = semantics.gridColor
+
+  for (let line = 1; line <= GRID_LINE_COUNT; line += 1) {
+    const y = Math.round(VERTICAL_PADDING + (drawableHeight * line) / (GRID_LINE_COUNT + 1))
+    context.fillRect(HORIZONTAL_PADDING, y, Math.max(0, dimensions.width - HORIZONTAL_PADDING * 2), 1)
+  }
+}
+
+const paintBar = (context: CanvasRenderingContext2D, bar: BarDescriptor, semantics: VisualSemantics): void => {
+  const glowColor = semantics.glowColors?.[bar.state]
+
+  context.fillStyle = resolveBarColor(semantics, bar.state, bar.normalizedValue)
+
+  if (glowColor) {
+    context.shadowColor = glowColor
+    context.shadowBlur = GLOW_BLUR
+  }
+
+  const radius = Math.min(MAX_CORNER_RADIUS, bar.width / 2, bar.height)
+
+  if (radius >= 1.5 && typeof context.roundRect === 'function' && typeof context.beginPath === 'function') {
+    context.beginPath()
+    context.roundRect(bar.x, bar.y, bar.width, bar.height, [radius, radius, 0, 0])
+    context.fill()
+  } else {
+    context.fillRect(bar.x, bar.y, bar.width, bar.height)
+  }
+
+  if (glowColor) {
+    context.shadowBlur = 0
+    context.shadowColor = 'transparent'
+  }
 }
 
 export const renderBarsFrame = (
@@ -221,8 +284,7 @@ export const renderBarsFrame = (
   transition?: RenderTransition,
 ): void => {
   context.clearRect(0, 0, dimensions.width, dimensions.height)
-  context.fillStyle = semantics.backgroundColor
-  context.fillRect(0, 0, dimensions.width, dimensions.height)
+  paintBackground(context, dimensions, semantics)
 
   const progress = clampProgress(transition?.progress ?? 1)
   const easedProgress = easeInOutCubic(progress)
@@ -248,8 +310,16 @@ export const renderBarsFrame = (
 
   const bars = createBarDescriptors(snapshot, frame.states, dimensions, { xOffsets })
 
+  // Paint highlighted bars last so their glow is not covered by neighbours.
   for (const bar of bars) {
-    context.fillStyle = semantics.barColors[bar.state]
-    context.fillRect(bar.x, bar.y, bar.width, bar.height)
+    if (!semantics.glowColors?.[bar.state]) {
+      paintBar(context, bar, semantics)
+    }
+  }
+
+  for (const bar of bars) {
+    if (semantics.glowColors?.[bar.state]) {
+      paintBar(context, bar, semantics)
+    }
   }
 }
