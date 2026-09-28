@@ -183,9 +183,10 @@ export const bootstrapComparePage = (root: HTMLDivElement): void => {
         return
       }
 
+      const width = Math.max(220, canvas.clientWidth || 320)
       const surface = configureCanvasSurface(canvas, {
-        width: Math.max(220, Math.min(380, canvas.clientWidth || 320)),
-        height: 170,
+        width,
+        height: Math.round(Math.max(150, Math.min(240, width * 0.42))),
       })
       const barStates = mapStepToBarStates(panelState.step, panelState.status)
 

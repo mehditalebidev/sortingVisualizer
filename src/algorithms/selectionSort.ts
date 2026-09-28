@@ -1,26 +1,13 @@
-import type { SortStep, SortStepMetadata } from '@/algorithms/contracts'
+import type { SortStep } from '@/algorithms/contracts'
+import { collectSteps, type StepSink } from '@/algorithms/stepTrack'
 
-const createStep = (
-  values: readonly number[],
-  comparedIndices: readonly number[],
-  modifiedIndices: readonly number[],
-  metadata?: SortStepMetadata,
-): SortStep => {
-  return {
-    snapshot: [...values],
-    comparedIndices: [...comparedIndices],
-    modifiedIndices: [...modifiedIndices],
-    metadata,
-  }
-}
-
-export const selectionSortSteps = (input: readonly number[]): SortStep[] => {
+export const emitSelectionSort = (input: readonly number[], sink: StepSink): void => {
   const values = [...input]
-  const steps: SortStep[] = [createStep(values, [], [], { operation: 'start' })]
+  sink.push(values, [], [], { operation: 'start' })
 
   if (values.length < 2) {
-    steps.push(createStep(values, [], [], { operation: 'sorted' }))
-    return steps
+    sink.push(values, [], [], { operation: 'sorted' })
+    return
   }
 
   for (let pass = 0; pass < values.length - 1; pass += 1) {
@@ -34,7 +21,7 @@ export const selectionSortSteps = (input: readonly number[]): SortStep[] => {
         continue
       }
 
-      steps.push(createStep(values, [minIndex, index], [], { operation: 'compare', pass: pass + 1 }))
+      sink.push(values, [minIndex, index], [], { operation: 'compare', pass: pass + 1 })
 
       if (currentValue < currentMin) {
         minIndex = index
@@ -48,24 +35,22 @@ export const selectionSortSteps = (input: readonly number[]): SortStep[] => {
       if (leftValue !== undefined && minValue !== undefined) {
         values[pass] = minValue
         values[minIndex] = leftValue
-        steps.push(
-          createStep(values, [pass, minIndex], [pass, minIndex], {
-            operation: 'swap',
-            pass: pass + 1,
-          }),
-        )
+        sink.push(values, [pass, minIndex], [pass, minIndex], {
+          operation: 'swap',
+          pass: pass + 1,
+        })
       }
     }
 
-    steps.push(
-      createStep(values, [], [pass], {
-        operation: 'pass-complete',
-        pass: pass + 1,
-      }),
-    )
+    sink.push(values, [], [pass], {
+      operation: 'pass-complete',
+      pass: pass + 1,
+    })
   }
 
-  steps.push(createStep(values, [], [values.length - 1], { operation: 'pass-complete', pass: values.length }))
-  steps.push(createStep(values, [], [], { operation: 'sorted' }))
-  return steps
+  sink.push(values, [], [values.length - 1], { operation: 'pass-complete', pass: values.length })
+  sink.push(values, [], [], { operation: 'sorted' })
+  return
 }
+
+export const selectionSortSteps = (input: readonly number[]): SortStep[] => collectSteps(input, emitSelectionSort)

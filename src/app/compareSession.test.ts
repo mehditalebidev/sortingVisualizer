@@ -52,7 +52,7 @@ describe('compare run session contract', () => {
               snapshot: [...input].sort((left, right) => left - right),
               comparedIndices: [],
               modifiedIndices: [],
-              metadata: { operation: 'sorted' },
+              metadata: { operation: 'sorted' as const },
             },
           ],
         }
@@ -65,7 +65,7 @@ describe('compare run session contract', () => {
     expect(execution.algorithmId).toBe('merge-sort')
     expect(execution.input).toEqual([3, 7, 1, 8])
     expect(execution.steps).toHaveLength(1)
-    expect(execution.steps[0]?.snapshot).toEqual([1, 3, 7, 8])
+    expect(execution.steps.at(0)?.snapshot).toEqual([1, 3, 7, 8])
   })
 
   it('throws when no algorithms are selected', () => {

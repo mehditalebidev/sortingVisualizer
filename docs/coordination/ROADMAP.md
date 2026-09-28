@@ -4,9 +4,9 @@ This roadmap defines high-level milestones and feature-level delivery for the So
 
 ## Current Status Snapshot
 
-- Completed features: F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11.
+- Completed features: F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12.
 - Active feature: None.
-- Recommended next track: Post-M7 follow-up planning (new feature track or prioritized bugfixes).
+- Recommended next track: debounce size-slider re-recording, then step-by-step scrubbing (cheap via checkpointed step tracks) and input presets.
 - Post-v1 algorithm expansion delivered: Merge Sort and Quick Sort are complete.
 
 ## Milestones
@@ -38,6 +38,10 @@ This roadmap defines high-level milestones and feature-level delivery for the So
 ### M7 - Comparative Learning Experience
 - Impact: users can run multiple algorithms in parallel on the same input and compare behavior, complexity, and educational context in one page.
 - Includes: F9, F10, F11.
+
+### M8 - Playful Experience
+- Impact: the app is fun to watch, with vibrant visuals, live stats, shortcuts, and a completion payoff.
+- Includes: F12.
 
 ## Features
 
@@ -212,5 +216,18 @@ Definition of Done:
 - Regression tests cover key compare-page flows.
 - Verification gates pass and worklog is updated.
 
+## F12 - Playful Visual Refresh and Engagement
+Goal: make sorting fun to watch without sacrificing clarity.
+
+Requirements:
+- Dark arcade theme across single and compare pages.
+- Value-colored, glowing canvas bars.
+- Live comparison/move stats, progress bar, keyboard shortcuts.
+- Completion celebration (reduced-motion aware) and optional sound.
+
+Definition of Done:
+- All existing flows keep working; new behaviors are covered by tests.
+- Verification gates pass and worklog is updated.
+
 ## Dependency Order
-- F1 -> F2 -> F3 -> F4 -> F5 -> F6 -> F7 -> F8 -> F9 -> F10 -> F11
+- F1 -> F2 -> F3 -> F4 -> F5 -> F6 -> F7 -> F8 -> F9 -> F10 -> F11 -> F12

@@ -8,3 +8,5 @@ export type { CanvasSurface, SurfaceDimensions } from '@/visualizer/canvasSurfac
 export { configureCanvasSurface, getPixelRatio, getResponsiveDimensions } from '@/visualizer/canvasSurface'
 export type { PlaybackState, PlaybackController } from '@/visualizer/playback'
 export { createPlaybackController } from '@/visualizer/playback'
+export type { Celebration, CelebrationOptions, ConfettiParticle } from '@/visualizer/celebration'
+export { confettiColors, createCelebration } from '@/visualizer/celebration'

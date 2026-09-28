@@ -1,4 +1,4 @@
-import type { SortStep, SortingAlgorithmId } from '@/algorithms'
+import type { SortStep, SortingAlgorithmId, StepSequence } from '@/algorithms'
 import {
   createCompareRunSession,
   type CompareRunSession,
@@ -11,7 +11,7 @@ import { resolvePlaybackCadence } from '@/state'
 export type ComparePanelRuntime = {
   algorithmId: SortingAlgorithmId
   input: number[]
-  steps: SortStep[]
+  steps: StepSequence
   stepIndex: number
   step: SortStep
   status: CompareRunStatus
@@ -45,7 +45,7 @@ export type CreateCompareOrchestratorOptions = {
 type PanelRuntimeInternal = {
   algorithmId: SortingAlgorithmId
   input: number[]
-  steps: SortStep[]
+  steps: StepSequence
   playback: PlaybackController
 }
 
@@ -105,7 +105,7 @@ const createPanelRuntimes = (
   session.selectedAlgorithms.forEach((algorithmId) => {
     const panel = session.panels[algorithmId] as {
       input: number[]
-      steps: SortStep[]
+      steps: StepSequence
     }
 
     panelRuntimes[algorithmId] = {

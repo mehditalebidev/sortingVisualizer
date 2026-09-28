@@ -1,26 +1,13 @@
-import type { SortStep, SortStepMetadata } from '@/algorithms/contracts'
+import type { SortStep } from '@/algorithms/contracts'
+import { collectSteps, type StepSink } from '@/algorithms/stepTrack'
 
-const createStep = (
-  values: readonly number[],
-  comparedIndices: readonly number[],
-  modifiedIndices: readonly number[],
-  metadata?: SortStepMetadata,
-): SortStep => {
-  return {
-    snapshot: [...values],
-    comparedIndices: [...comparedIndices],
-    modifiedIndices: [...modifiedIndices],
-    metadata,
-  }
-}
-
-export const bubbleSortSteps = (input: readonly number[]): SortStep[] => {
+export const emitBubbleSort = (input: readonly number[], sink: StepSink): void => {
   const values = [...input]
-  const steps: SortStep[] = [createStep(values, [], [], { operation: 'start' })]
+  sink.push(values, [], [], { operation: 'start' })
 
   if (values.length < 2) {
-    steps.push(createStep(values, [], [], { operation: 'sorted' }))
-    return steps
+    sink.push(values, [], [], { operation: 'sorted' })
+    return
   }
 
   for (let pass = 0; pass < values.length - 1; pass += 1) {
@@ -35,33 +22,31 @@ export const bubbleSortSteps = (input: readonly number[]): SortStep[] => {
         continue
       }
 
-      steps.push(createStep(values, comparedIndices, [], { operation: 'compare', pass: pass + 1 }))
+      sink.push(values, comparedIndices, [], { operation: 'compare', pass: pass + 1 })
 
       if (leftValue > rightValue) {
         values[index] = rightValue
         values[index + 1] = leftValue
         swapped = true
-        steps.push(
-          createStep(values, comparedIndices, comparedIndices, {
-            operation: 'swap',
-            pass: pass + 1,
-          }),
-        )
+        sink.push(values, comparedIndices, comparedIndices, {
+          operation: 'swap',
+          pass: pass + 1,
+        })
       }
     }
 
-    steps.push(
-      createStep(values, [], [values.length - pass - 1], {
-        operation: 'pass-complete',
-        pass: pass + 1,
-      }),
-    )
+    sink.push(values, [], [values.length - pass - 1], {
+      operation: 'pass-complete',
+      pass: pass + 1,
+    })
 
     if (!swapped) {
       break
     }
   }
 
-  steps.push(createStep(values, [], [], { operation: 'sorted' }))
-  return steps
+  sink.push(values, [], [], { operation: 'sorted' })
+  return
 }
+
+export const bubbleSortSteps = (input: readonly number[]): SortStep[] => collectSteps(input, emitBubbleSort)

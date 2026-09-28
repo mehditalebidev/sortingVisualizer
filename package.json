@@ -7,11 +7,11 @@
     "check": "npm run lint && npm run test && npm run test:coverage && npm run typecheck && npm run build",
     "coverage:touched": "npm run test:coverage && node scripts/check-touched-coverage.mjs",
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "npm run typecheck && vite build",
     "lint": "eslint .",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.node.json",
     "preview": "vite preview"
   },
   "devDependencies": {

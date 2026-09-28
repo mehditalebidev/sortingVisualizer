@@ -1,7 +1,31 @@
 import { describe, expect, it, vi } from 'vitest'
 
 import { createBarDescriptors, renderBarsFrame } from '@/visualizer/barRenderer'
-import { defaultVisualSemantics } from '@/visualizer/renderModel'
+import { defaultVisualSemantics, type VisualSemantics } from '@/visualizer/renderModel'
+
+// Plain semantics (no grid, glow, or value hues) keep fillRect call order equal to bar order.
+const flatSemantics: VisualSemantics = {
+  backgroundColor: defaultVisualSemantics.backgroundColor,
+  barColors: defaultVisualSemantics.barColors,
+}
+
+const createRecordingContext = () => {
+  const calls: string[] = []
+  const gradient = { addColorStop: vi.fn() }
+  const context = {
+    clearRect: vi.fn(),
+    fillRect: vi.fn(() => calls.push('fillRect')),
+    fill: vi.fn(() => calls.push(`fill:${String(context.shadowBlur)}`)),
+    beginPath: vi.fn(),
+    roundRect: vi.fn(),
+    createLinearGradient: vi.fn(() => gradient),
+    fillStyle: '#000000' as unknown,
+    shadowBlur: 0,
+    shadowColor: 'transparent',
+  }
+
+  return { context, calls, gradient }
+}
 
 describe('bar renderer', () => {
   it('returns empty descriptor list for empty snapshots', () => {
@@ -70,7 +94,7 @@ describe('bar renderer', () => {
         width: 200,
         height: 100,
       },
-      defaultVisualSemantics,
+      flatSemantics,
     )
 
     expect(clearRect).toHaveBeenCalledOnce()
@@ -101,7 +125,7 @@ describe('bar renderer', () => {
         width: 200,
         height: 120,
       },
-      defaultVisualSemantics,
+      flatSemantics,
       {
         fromSnapshot: [1, 5],
         progress: 0.5,
@@ -144,7 +168,7 @@ describe('bar renderer', () => {
         width: 320,
         height: 120,
       },
-      defaultVisualSemantics,
+      flatSemantics,
       {
         fromSnapshot: [3, 4, 1, 5],
         progress: 0.5,
@@ -187,7 +211,7 @@ describe('bar renderer', () => {
         width: 300,
         height: 120,
       },
-      defaultVisualSemantics,
+      flatSemantics,
       {
         fromSnapshot: [3, 1, 5],
         progress: 0.5,
@@ -206,4 +230,91 @@ describe('bar renderer', () => {
     expect(firstBarX).toBeGreaterThan(12)
     expect(secondBarX).toBeCloseTo(105, 0)
   })
+
+  it('paints gradient background, grid lines, and rounded glowing bars with vibrant semantics', () => {
+    const { context, calls, gradient } = createRecordingContext()
+
+    renderBarsFrame(
+      context as unknown as CanvasRenderingContext2D,
+      {
+        snapshot: [4, 8, 2],
+        states: ['compared', 'neutral', 'modified'],
+      },
+      { width: 300, height: 160 },
+      defaultVisualSemantics,
+    )
+
+    expect(context.createLinearGradient).toHaveBeenCalledOnce()
+    expect(gradient.addColorStop).toHaveBeenCalledTimes(2)
+    // background + 4 grid lines, then 3 rounded bars
+    expect(calls.filter((call) => call === 'fillRect')).toHaveLength(5)
+    expect(context.roundRect).toHaveBeenCalledTimes(3)
+    // neutral bar first without glow, highlighted bars afterwards with glow
+    expect(calls.slice(-3)).toEqual(['fill:0', 'fill:14', 'fill:14'])
+    expect(context.shadowBlur).toBe(0)
+  })
+
+  it('falls back to square bars when bars are too thin for rounded corners', () => {
+    const { context } = createRecordingContext()
+
+    renderBarsFrame(
+      context as unknown as CanvasRenderingContext2D,
+      {
+        snapshot: Array.from({ length: 200 }, (_, index) => index),
+        states: [],
+      },
+      { width: 300, height: 160 },
+      defaultVisualSemantics,
+    )
+
+    expect(context.roundRect).not.toHaveBeenCalled()
+    expect(context.fillRect).toHaveBeenCalledTimes(205)
+  })
+
+  it('exposes normalized values on descriptors', () => {
+    const bars = createBarDescriptors([10, 20, 30], [], { width: 300, height: 100 })
+
+    expect(bars.map((bar) => bar.normalizedValue)).toEqual([0, 0.5, 1])
+  })
+
+  it('interpolates heights when a transition cannot be expressed as positional movement', () => {
+    const { context } = createRecordingContext()
+    const fillRect = context.fillRect
+    Reflect.deleteProperty(context, 'roundRect')
+
+    renderBarsFrame(
+      context as unknown as CanvasRenderingContext2D,
+      { snapshot: [2, 9], states: ['neutral', 'neutral'] },
+      { width: 200, height: 120 },
+      flatSemantics,
+      {
+        fromSnapshot: [2, 4],
+        progress: 0.5,
+        operation: 'compare',
+        comparedIndices: [0, 1],
+        modifiedIndices: [],
+      },
+    )
+
+    const interpolatedHeight = fillRect.mock.calls[2] as unknown as number[]
+    expect(interpolatedHeight[3]).toBeGreaterThan(0)
+
+    fillRect.mockClear()
+    renderBarsFrame(
+      context as unknown as CanvasRenderingContext2D,
+      { snapshot: [3, 3, 3], states: [] },
+      { width: 200, height: 120 },
+      flatSemantics,
+      {
+        fromSnapshot: [3, 3],
+        progress: Number.NaN,
+        operation: 'swap',
+        comparedIndices: [],
+        modifiedIndices: [0.5, 1],
+      },
+    )
+
+    expect(fillRect).toHaveBeenCalledTimes(3)
+  })
 })
+

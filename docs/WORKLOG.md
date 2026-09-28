@@ -669,3 +669,59 @@ Use this file to record every completed subtask/task/feature.
 - Result: F9 and F10 are now fully complete; compare mode provides synchronized, fair multi-algorithm execution with stable parallel rendering and full shared controls.
 - Risks/notes: Coverage for touched compare files now meets the >=80% lines/branches threshold; global repository branch coverage remains influenced by legacy untouched modules.
 - Next smallest iteration: Start next roadmap track beyond F11 (new feature planning or bugfix queue prioritization).
+
+### 2026-09-28 - F12-T1 Vibrant canvas renderer and theme
+- Scope: Value-mapped hue bars, rounded tops, glow for compared/modified, gradient background with grid lines, minimum visible bar height, dark arcade stylesheet, fonts and favicon.
+- Files changed: `src/visualizer/renderModel.ts`, `src/visualizer/renderModel.test.ts`, `src/visualizer/barRenderer.ts`, `src/visualizer/barRenderer.test.ts`, `src/style.css`, `index.html`
+- Tests added/updated: Renderer tests use flat semantics for positional assertions; added tests for gradient/grid/glow ordering, square-bar fallback, normalized values, hue mapping, and interpolation fallbacks.
+- Verification:
+  - lint: Passed via `npm run lint`
+  - test: Passed via `npm run test`
+  - test:coverage: Passed via `npm run test:coverage`
+  - typecheck: Passed via `npm run typecheck`
+  - build: Passed via `npm run build`
+- Result: barRenderer.ts 98.5% lines / 90.4% branches; renderModel.ts 100% / 91.3%.
+- Risks/notes: Skills: no local `skills/` directory present; followed AGENTS.md architecture and UI sanity checklist (verified desktop 1280px and mobile 390px via headless Chromium screenshots).
+- Next smallest iteration: F12-T2
+
+### 2026-09-28 - F12-T2 Live stats HUD, progress, keyboard shortcuts, resize fix
+- Scope: Cumulative comparison/move stats module, stats chips + progress bar, Space/R/Esc shortcuts, resize listener fix (BF-RES-002), icon buttons.
+- Files changed: `src/algorithms/stepStats.ts`, `src/algorithms/stepStats.test.ts`, `src/algorithms/index.ts`, `src/app/bootstrap.ts`, `src/app/bootstrap.test.ts`, `src/style.css`
+- Tests added/updated: Stats accumulation/clamping tests; bootstrap tests for HUD completion values, keyboard mapping and gating, resize re-render and listener cleanup.
+- Verification:
+  - lint: Passed via `npm run lint`
+  - test: Passed via `npm run test`
+  - test:coverage: Passed via `npm run test:coverage`
+  - typecheck: Passed via `npm run typecheck`
+  - build: Passed via `npm run build`
+- Result: stepStats.ts 100% lines / 83% branches.
+- Risks/notes: Skills: no local `skills/` directory present; followed AGENTS.md architecture and UI sanity checklist (verified desktop 1280px and mobile 390px via headless Chromium screenshots).
+- Next smallest iteration: F12-T3
+
+### 2026-09-28 - F12-T3 Completion celebration and optional sound
+- Scope: Victory sweep + confetti on finish (reduced-motion aware), Web Audio blips and finish arpeggio behind an off-by-default toggle, compare canvas width fix (BF-CMP-003).
+- Files changed: `src/visualizer/celebration.ts`, `src/visualizer/celebration.test.ts`, `src/visualizer/index.ts`, `src/app/sound.ts`, `src/app/sound.test.ts`, `src/app/bootstrap.ts`, `src/app/bootstrap.test.ts`, `src/app/compareBootstrap.ts`
+- Tests added/updated: Celebration timing/sweep/draw tests; sound engine mapping, throttling, gating, and graceful degradation tests; bootstrap integration tests for sound toggle, finish jingle, celebration frames, and reduced motion.
+- Verification:
+  - lint: Passed via `npm run lint`
+  - test: Passed via `npm run test`
+  - test:coverage: Passed via `npm run test:coverage`
+  - typecheck: Passed via `npm run typecheck`
+  - build: Passed via `npm run build`
+- Result: celebration.ts 100% lines / 95.8% branches; sound.ts 100% lines / 100% branches; bootstrap.ts 94.3% lines / 85.2% branches. F12 complete.
+- Risks/notes: Skills: no local `skills/` directory present; followed AGENTS.md architecture and UI sanity checklist (verified desktop 1280px and mobile 390px via headless Chromium screenshots).
+- Next smallest iteration: BF-MEM-004 step memory blow-up for large quadratic runs.
+
+### 2026-09-28 - BF-MEM-004 Compact step tracks + BF-TC-005 typecheck gate
+- Scope: Replaced per-step full snapshots at runtime with a compact, checkpointed `StepTrack`; algorithms emit into a sink; playback, stats, pipeline, and compare mode consume a `StepSequence`. Fixed the typecheck script, which compiled zero files.
+- Files changed: `src/algorithms/stepTrack.ts`, `src/algorithms/stepTrack.test.ts`, `src/algorithms/contracts.ts`, `src/algorithms/index.ts`, `src/algorithms/runner.ts`, `src/algorithms/runner.test.ts`, `src/algorithms/{bubble,insertion,selection,merge,quick}Sort.ts`, `src/algorithms/insertionSort.test.ts`, `src/algorithms/stepStats.ts`, `src/visualizer/playback.ts`, `src/visualizer/playback.test.ts`, `src/app/algorithmPipeline.ts`, `src/app/algorithmPipeline.test.ts`, `src/app/compareSession.ts`, `src/app/compareSession.test.ts`, `src/app/compareOrchestrator.ts`, `src/app/bootstrap.ts`, `package.json`
+- Tests added/updated: Step-track equivalence matrix (5 algorithms x fixtures + seeded random inputs x 4 checkpoint intervals x forward/backward/random access), Array.at index semantics, caching, metadata edge cases, buffer growth, post-finish guard, large-run smoke test; runner compact-path equality; playback over compact tracks, complete/empty/no-op branches; insertion sort sparse-input tolerance.
+- Verification:
+  - lint: Passed via `npm run lint`
+  - test: Passed via `npm run test` (228 tests)
+  - test:coverage: Passed via `npm run test:coverage` (stepTrack.ts 100% lines / 83% branches, playback.ts 100% / 93.8%, insertionSort.ts 97% / 91.7%)
+  - typecheck: Passed via `npm run typecheck` (now actually checks `tsconfig.app.json` and `tsconfig.node.json`)
+  - build: Passed via `npm run build`
+- Result: Bubble Sort at n=1000 records ~752k steps in ~0.3 s using ~56 MB (previously ~6 GB extrapolated). Browser check at n=1000 for all algorithms: no errors, page heap 9-103 MB.
+- Risks/notes: The iteration touches more than 6 source files because the step contract is shared by every algorithm and consumer; changes are mechanical and guarded by the equivalence matrix. Dragging the size slider near 1000 on quadratic algorithms still re-records on every input event (~0.3-1 s each), which can feel sluggish.
+- Next smallest iteration: Debounce re-recording while the size slider is dragged; then step scrubbing.

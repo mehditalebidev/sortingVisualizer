@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest'
 
 import type { SortStep } from '@/algorithms'
-import { defaultVisualSemantics, mapStepToBarStates, resolveVisualState } from '@/visualizer/renderModel'
+import {
+  defaultVisualSemantics,
+  mapStepToBarStates,
+  resolveBarColor,
+  resolveVisualState,
+} from '@/visualizer/renderModel'
 
 const baseStep: SortStep = {
   snapshot: [5, 2, 7, 1],
@@ -77,4 +82,19 @@ describe('render model', () => {
     expect(colors.compared).not.toBe(colors.modified)
     expect(colors.modified).not.toBe(colors.completed)
   })
+
+  it('colors neutral bars along the value hue range and keeps state colors for highlights', () => {
+    expect(resolveBarColor(defaultVisualSemantics, 'neutral', 0)).toBe('hsl(285, 88%, 64%)')
+    expect(resolveBarColor(defaultVisualSemantics, 'neutral', 1)).toBe('hsl(195, 88%, 64%)')
+    expect(resolveBarColor(defaultVisualSemantics, 'neutral', 5)).toBe('hsl(195, 88%, 64%)')
+    expect(resolveBarColor(defaultVisualSemantics, 'neutral', Number.NaN)).toBe('hsl(285, 88%, 64%)')
+    expect(resolveBarColor(defaultVisualSemantics, 'compared', 0.5)).toBe(defaultVisualSemantics.barColors.compared)
+  })
+
+  it('uses flat neutral color when no value hue range is configured', () => {
+    const semantics = { backgroundColor: '#000', barColors: defaultVisualSemantics.barColors }
+
+    expect(resolveBarColor(semantics, 'neutral', 0.5)).toBe(defaultVisualSemantics.barColors.neutral)
+  })
 })
+

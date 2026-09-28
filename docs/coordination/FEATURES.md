@@ -1299,3 +1299,57 @@ Acceptance criteria:
 - All quality gates pass.
 - F11 tasks are marked done in board tracking.
 - Worklog contains dated closure evidence and next suggested roadmap track.
+
+## F12 - Playful Visual Refresh and Engagement
+
+Feature goal:
+- Make the visualizer more fun and engaging to watch while keeping visual semantics clear and all existing flows intact.
+
+Feature-level Definition of Done:
+- New dark "arcade" theme applies to both single and compare pages.
+- Canvas bars are value-colored, rounded, and highlighted states glow.
+- Users see live comparison/move counters and progress while sorting.
+- Completion is celebrated visually (and audibly when sound is enabled).
+- Reduced-motion users are not shown the celebration animation.
+- Full verification gates pass and touched code meets >=80% lines/branches coverage.
+
+### F12-T1 - Vibrant Canvas Renderer and Theme
+User story:
+- As a learner, I want a colorful, lively visualization so watching a sort is enjoyable and the ordering is easy to see.
+
+Description:
+- Color neutral bars along a hue range by value, round bar tops, add glow to compared/modified bars, paint gradient background with grid lines, keep smallest bar visible.
+- Replace the stylesheet with a dark arcade theme (gradient title, 3D buttons, custom sliders).
+
+Acceptance criteria:
+- Compared/modified/completed colors remain distinct from the neutral hue range.
+- Renderer falls back to square bars when `roundRect` is unavailable or bars are too thin.
+- Legend reflects the new palette.
+
+### F12-T2 - Live Stats HUD, Progress, and Keyboard Shortcuts
+User story:
+- As a learner, I want to see how many comparisons and moves an algorithm makes and control playback from the keyboard.
+
+Description:
+- Precompute cumulative comparison/move totals per step; display them with a progress bar.
+- Add Space (play/pause/resume), R (shuffle), Esc (reset) shortcuts respecting control gating.
+- Register the window resize handler regardless of autoplay.
+
+Acceptance criteria:
+- Counters and progress reach final values/100% on completion.
+- Shortcuts are ignored when focus is on buttons, selects, or text inputs, and when modifier keys are held.
+- Canvas re-renders on window resize in the default (non-autoplay) mode.
+
+### F12-T3 - Completion Celebration and Optional Sound
+User story:
+- As a learner, I want a satisfying payoff when a sort finishes and optional audio feedback while it runs.
+
+Description:
+- Victory sweep across bars plus confetti on finish; skipped for `prefers-reduced-motion`.
+- Web Audio blips pitched by value plus a finish arpeggio; off by default behind a toggle.
+
+Acceptance criteria:
+- Celebration is cleared on start, reset, shuffle, algorithm, or size change.
+- No audio context is created until the user enables sound.
+- Missing or blocked Web Audio degrades silently.
+

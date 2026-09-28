@@ -46,4 +46,19 @@ describe('insertionSortSteps', () => {
       'pass-complete',
     ])
   })
+
+  it('tolerates sparse input holes without throwing or comparing missing values', () => {
+    // eslint-disable-next-line no-sparse-arrays
+    const sparse = [4, , 2, 1] as number[]
+    const steps = insertionSortSteps(sparse)
+
+    expect(steps.at(-1)?.metadata?.operation).toBe('sorted')
+    const compareSteps = steps.filter((step) => step.metadata?.operation === 'compare')
+    for (const step of compareSteps) {
+      for (const index of step.comparedIndices) {
+        expect(step.snapshot[index]).not.toBeUndefined()
+      }
+    }
+  })
 })
+

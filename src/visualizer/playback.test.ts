@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import type { SortStep } from '@/algorithms'
+import { recordAlgorithm, runAlgorithm, type SortStep } from '@/algorithms'
 import { createPlaybackController } from '@/visualizer/playback'
 
 const steps: SortStep[] = [
@@ -60,4 +60,50 @@ describe('playback controller', () => {
     expect(playback.start()).toMatchObject({ status: 'finished', stepIndex: 0 })
     expect(playback.getState().step.snapshot).toEqual([])
   })
+
+  it('jumps to the final step on complete and falls back safely for empty sequences', () => {
+    const playback = createPlaybackController(steps)
+
+    expect(playback.complete()).toMatchObject({ status: 'finished', stepIndex: 2 })
+    expect(playback.getState().step.snapshot).toEqual([1, 2, 3])
+
+    const empty = createPlaybackController([])
+    expect(empty.start().status).toBe('finished')
+    expect(empty.getState().step.metadata?.operation).toBe('start')
+  })
+
+  it('plays a compact step track without copying it into an array', () => {
+    const input = [5, 1, 4, 2, 3]
+    const reference = runAlgorithm('bubble-sort', input)
+    const playback = createPlaybackController(recordAlgorithm('bubble-sort', input))
+
+    playback.start()
+    const visited: SortStep[] = [playback.getState().step]
+
+    while (playback.getState().status === 'running') {
+      visited.push(playback.tick().step)
+    }
+
+    expect(visited).toEqual(reference)
+    expect(playback.reset().step).toEqual(reference[0])
+  })
+
+  it('ignores tick, pause, and resume when they do not apply to the current status', () => {
+    const playback = createPlaybackController(steps)
+
+    expect(playback.tick()).toMatchObject({ status: 'idle', stepIndex: 0 })
+    expect(playback.pause().status).toBe('idle')
+    expect(playback.resume().status).toBe('idle')
+
+    playback.start()
+    expect(playback.resume().status).toBe('running')
+  })
+
+  it('falls back to a placeholder step when a sequence has no step at the index', () => {
+    const holey = { length: 2, at: () => undefined }
+    const playback = createPlaybackController(holey)
+
+    expect(playback.getState().step.snapshot).toEqual([])
+  })
 })
+

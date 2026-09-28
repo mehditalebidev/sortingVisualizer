@@ -76,3 +76,70 @@ Definition of done:
 - Tests added/updated and passing.
 - Quality gates green.
 - Add a dated completion entry in `docs/WORKLOG.md` referencing `BF-INS-001`.
+
+## BF-RES-002 - Canvas Does Not Re-Render on Window Resize
+
+Priority:
+- Medium
+
+Status:
+- Done (2026-09-28)
+
+Problem statement:
+- `bootstrapApp` registered the `resize` listener after the `if (!autoplay) return` guard, so in the default (non-autoplay) app the canvas never resized.
+
+Fix:
+- Register a rAF-throttled resize handler before the autoplay guard; the handler detaches itself once the canvas is removed from the DOM.
+
+## BF-CMP-003 - Compare Canvases Do Not Fill Their Panels
+
+Priority:
+- Low
+
+Status:
+- Done (2026-09-28)
+
+Problem statement:
+- Compare canvases were sized with `Math.min(380, clientWidth)`, leaving blank space in wider panels.
+
+Fix:
+- Size canvas to the panel width with a proportional, clamped height.
+
+## BF-MEM-004 - Step Snapshots Exhaust Memory for Large Quadratic Runs
+
+Priority:
+- High
+
+Status:
+- Done (2026-09-28)
+
+Problem statement:
+- Every step stores a full copy of the array. Bubble/Insertion/Selection emit ~O(n^2) steps, so memory is ~O(n^3): measured ~160 MB at n=300; extrapolated to several GB at the 1000-element slider maximum, freezing or crashing the tab.
+
+Suggested fix:
+- Store per-step deltas (swap/write) and reconstruct snapshots incrementally in the playback controller, or generate steps lazily; as a stopgap, cap array size for quadratic algorithms.
+
+Acceptance criteria:
+- n=1000 Bubble Sort executes without multi-GB memory use; seeking/reset still work; step contract tests keep passing.
+
+Resolution:
+- Algorithms now emit into a `StepSink` (`emitXxxSort(input, sink)`); `xxxSortSteps` remain as full-snapshot reference wrappers used by tests.
+- Runtime paths use `recordAlgorithm`, which stores a compact `StepTrack` (`src/algorithms/stepTrack.ts`): per-step operation/metadata/indices in typed arrays, only the values written at each step, and a full checkpoint every `max(64, 4n)` steps. Snapshots are rebuilt on demand by a cursor (O(writes) forward, checkpoint restore for backward jumps).
+- Consumers accept a `StepSequence` (`length` + `at()`), which plain arrays also satisfy; step stats read operation codes directly without rebuilding snapshots.
+- Equivalence tests assert the track reproduces the reference steps exactly for all algorithms, fixtures, random inputs, checkpoint intervals, and forward/backward/random access.
+- Measured: Bubble Sort n=1000 (~752k steps) ~56 MB and ~0.3 s to record (previously ~6 GB extrapolated; n=300 dropped from ~177 MB to ~7 MB).
+
+## BF-TC-005 - Typecheck Script Checked No Files
+
+Priority:
+- High
+
+Status:
+- Done (2026-09-28)
+
+Problem statement:
+- `npm run typecheck` ran `tsc --noEmit` against the root `tsconfig.json`, which has `"files": []` and only project references, so it type-checked nothing. `build` (`tsc && vite build`) had the same gap.
+
+Fix:
+- `typecheck` now runs `tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.node.json`; `build` runs `npm run typecheck && vite build`.
+

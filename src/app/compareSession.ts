@@ -1,4 +1,4 @@
-import type { SortStep, SortingAlgorithmId } from '@/algorithms'
+import type { SortingAlgorithmId, StepSequence } from '@/algorithms'
 import { executeAlgorithmWithInput, type AlgorithmExecution } from '@/app/algorithmPipeline'
 
 export type CompareRunStatus = 'idle' | 'running' | 'paused' | 'finished'
@@ -20,7 +20,7 @@ export const compareSessionSyncGuarantees: CompareSessionSyncGuarantees = {
 export type ComparePanelRun = {
   algorithmId: SortingAlgorithmId
   input: number[]
-  steps: SortStep[]
+  steps: StepSequence
   stepIndex: number
   status: CompareRunStatus
 }
@@ -40,7 +40,7 @@ type CompareSessionExecutor = (
 ) => {
   algorithmId: SortingAlgorithmId
   input: number[]
-  steps: SortStep[]
+  steps: StepSequence
 }
 
 export type CreateCompareRunSessionOptions = {
