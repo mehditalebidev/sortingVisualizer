@@ -885,3 +885,9 @@ kbd {
     transition: none !important;
   }
 }
+
+@media (hover: none) and (pointer: coarse) {
+  .canvas-hint {
+    display: none;
+  }
+}

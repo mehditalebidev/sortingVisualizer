@@ -1,7 +1,12 @@
 import { screen } from '@testing-library/dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { bootstrapApp, buildInitialIndexLookup, mapSnapshotToInitialIndices } from '@/app/bootstrap'
+import {
+  bootstrapApp,
+  buildInitialIndexLookup,
+  mapSnapshotToInitialIndices,
+  resolveKeyboardAction,
+} from '@/app/bootstrap'
 
 const sequenceRandom = (values: number[]): (() => number) => {
   let index = 0
@@ -52,7 +57,9 @@ describe('bootstrapApp', () => {
     expect(canvas?.getAttribute('height')).toBe('420')
     expect(root.querySelector('.workspace-grid')).toBeTruthy()
     expect(root.querySelector('.canvas-shell')).toBeTruthy()
-    expect(root.querySelector('.canvas-hint')?.textContent).toContain('stay fully visible across desktop and mobile sizes')
+    expect(root.querySelector('.canvas-hint')?.textContent).toContain('Space')
+    expect(root.querySelector('#stat-comparisons')?.textContent).toBe('0')
+    expect(root.querySelector('#stat-progress')?.textContent).toBe('0%')
     const legendItems = root.querySelectorAll('.visual-legend li')
     expect(legendItems).toHaveLength(4)
     expect(root.querySelector('.visual-legend')?.textContent).toContain('Compared')
@@ -337,4 +344,134 @@ describe('bootstrapApp', () => {
 
     expect(mapped).toEqual([1, 3, 4, 2, 0])
   })
+
+  it('updates live stats and progress as playback advances to completion', () => {
+    vi.useFakeTimers()
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation(() => 1)
+    document.body.innerHTML = '<div id="app"></div>'
+
+    const root = document.querySelector<HTMLDivElement>('#app')
+
+    if (!root) {
+      throw new Error('Test root not found')
+    }
+
+    bootstrapApp(root, {
+      autoplay: false,
+      defaultArraySize: 6,
+      defaultSpeed: 100,
+      previewOptions: {
+        minValue: 1,
+        maxValue: 9,
+        random: sequenceRandom([0.9, 0.7, 0.5, 0.3, 0.1, 0.0]),
+      },
+    })
+
+    root.querySelector<HTMLButtonElement>('#start-button')?.click()
+    vi.advanceTimersByTime(2000)
+
+    expect(root.dataset.status).toBe('finished')
+    expect(Number(root.querySelector('#stat-comparisons')?.textContent)).toBeGreaterThan(0)
+    expect(Number(root.querySelector('#stat-moves')?.textContent)).toBeGreaterThan(0)
+    expect(root.querySelector('#stat-progress')?.textContent).toBe('100%')
+    expect(root.querySelector('.progress-track')?.getAttribute('aria-valuenow')).toBe('100')
+    expect(root.querySelector<HTMLDivElement>('#progress-fill')?.style.width).toBe('100%')
+    vi.useRealTimers()
+  })
+
+  it('maps keyboard keys to playback actions based on status', () => {
+    expect(resolveKeyboardAction(' ', 'idle')).toBe('start')
+    expect(resolveKeyboardAction(' ', 'finished')).toBe('start')
+    expect(resolveKeyboardAction(' ', 'running')).toBe('pause')
+    expect(resolveKeyboardAction('Spacebar', 'paused')).toBe('resume')
+    expect(resolveKeyboardAction('r', 'idle')).toBe('randomize')
+    expect(resolveKeyboardAction('R', 'idle')).toBe('randomize')
+    expect(resolveKeyboardAction('Escape', 'running')).toBe('reset')
+    expect(resolveKeyboardAction('x', 'idle')).toBeUndefined()
+  })
+
+  it('drives playback with keyboard shortcuts and ignores keys aimed at form controls', () => {
+    vi.useFakeTimers()
+    document.body.innerHTML = '<div id="app"></div>'
+
+    const root = document.querySelector<HTMLDivElement>('#app')
+
+    if (!root) {
+      throw new Error('Test root not found')
+    }
+
+    bootstrapApp(root, {
+      autoplay: false,
+      defaultArraySize: 20,
+      defaultSpeed: 10,
+      previewOptions: {
+        minValue: 1,
+        maxValue: 50,
+        random: sequenceRandom([0.4, 0.9, 0.2, 0.8, 0.1]),
+      },
+    })
+
+    const press = (key: string, target: EventTarget = document.body, init: KeyboardEventInit = {}): void => {
+      target.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...init }))
+    }
+
+    press(' ')
+    expect(root.dataset.status).toBe('running')
+    press(' ')
+    expect(root.dataset.status).toBe('paused')
+    press(' ')
+    expect(root.dataset.status).toBe('running')
+    press('r')
+    expect(root.dataset.status).toBe('running')
+    press(' ', document.body, { ctrlKey: true })
+    expect(root.dataset.status).toBe('running')
+
+    const select = root.querySelector<HTMLSelectElement>('#algorithm-select')
+    press(' ', select ?? document.body)
+    expect(root.dataset.status).toBe('running')
+
+    press('Escape')
+    expect(root.dataset.status).toBe('idle')
+
+    const summaryBefore = root.querySelector('#stat-comparisons')?.textContent
+    press('R')
+    expect(root.dataset.status).toBe('idle')
+    expect(root.querySelector('#stat-comparisons')?.textContent).toBe(summaryBefore)
+
+    press('q')
+    expect(root.dataset.status).toBe('idle')
+    vi.runOnlyPendingTimers()
+    vi.useRealTimers()
+  })
+
+  it('re-renders on window resize even without autoplay and detaches stale listeners', () => {
+    const requestAnimationFrameSpy = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+      callback(0)
+      return 1
+    })
+    const removeListenerSpy = vi.spyOn(window, 'removeEventListener')
+    document.body.innerHTML = '<div id="app"></div>'
+
+    const root = document.querySelector<HTMLDivElement>('#app')
+
+    if (!root) {
+      throw new Error('Test root not found')
+    }
+
+    bootstrapApp(root, { autoplay: false })
+    const canvas = root.querySelector<HTMLCanvasElement>('#sorting-canvas')
+    vi.spyOn(canvas as HTMLCanvasElement, 'getBoundingClientRect').mockReturnValue({ width: 450 } as DOMRect)
+
+    window.dispatchEvent(new Event('resize'))
+
+    expect(requestAnimationFrameSpy).toHaveBeenCalled()
+    expect(canvas?.style.width).toBe('450px')
+
+    document.body.innerHTML = '<div id="app"></div>'
+    window.dispatchEvent(new Event('resize'))
+    expect(removeListenerSpy).toHaveBeenCalledWith('resize', expect.any(Function))
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: ' ' }))
+  })
 })
+

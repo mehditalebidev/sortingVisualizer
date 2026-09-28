@@ -4,7 +4,12 @@ import {
   generateRandomArray,
   type RandomArrayOptions,
 } from '@/app/algorithmPipeline'
-import { getAlgorithmMetadata, listAlgorithms, type SortingAlgorithmId } from '@/algorithms'
+import {
+  buildCumulativeStepStats,
+  getAlgorithmMetadata,
+  listAlgorithms,
+  type SortingAlgorithmId,
+} from '@/algorithms'
 import type { SortStep } from '@/algorithms'
 import {
   defaultSpeedRange,
@@ -89,6 +94,28 @@ export const mapSnapshotToInitialIndices = (
   })
 }
 
+export type KeyboardAction = 'start' | 'pause' | 'resume' | 'reset' | 'randomize'
+
+export const resolveKeyboardAction = (key: string, status: PlaybackStatus): KeyboardAction | undefined => {
+  if (key === ' ' || key === 'Spacebar') {
+    if (status === 'running') {
+      return 'pause'
+    }
+
+    return status === 'paused' ? 'resume' : 'start'
+  }
+
+  if (key === 'r' || key === 'R') {
+    return 'randomize'
+  }
+
+  if (key === 'Escape') {
+    return 'reset'
+  }
+
+  return undefined
+}
+
 export const bootstrapApp = (root: HTMLDivElement, options: BootstrapOptions = {}): void => {
   const resolvedOptions = {
     ...DEFAULT_BOOTSTRAP_OPTIONS,
@@ -126,6 +153,7 @@ export const bootstrapApp = (root: HTMLDivElement, options: BootstrapOptions = {
   let currentInput = generateRandomArray(getRandomArrayOptions(arraySize))
   let execution = executeAlgorithmWithInput(selectedAlgorithmId, currentInput)
   let playback = createPlaybackController(execution.steps)
+  let stepStats = buildCumulativeStepStats(execution.steps)
   let initialIndexLookup = buildInitialIndexLookup(execution.steps[0]?.snapshot ?? currentInput)
   let tickIntervalId: number | undefined
   let animationFrameId: number | undefined
@@ -164,19 +192,27 @@ export const bootstrapApp = (root: HTMLDivElement, options: BootstrapOptions = {
           </label>
         </div>
         <div class="button-row">
-          <button id="randomize-button" type="button">Randomize</button>
-          <button id="start-button" type="button">Start</button>
-          <button id="pause-button" type="button">Pause</button>
-          <button id="resume-button" type="button">Resume</button>
-          <button id="reset-button" type="button">Reset</button>
+          <button id="randomize-button" type="button"><span class="btn-icon" aria-hidden="true">🎲</span>Shuffle</button>
+          <button id="start-button" type="button"><span class="btn-icon" aria-hidden="true">▶</span>Start</button>
+          <button id="pause-button" type="button"><span class="btn-icon" aria-hidden="true">⏸</span>Pause</button>
+          <button id="resume-button" type="button"><span class="btn-icon" aria-hidden="true">⏵</span>Resume</button>
+          <button id="reset-button" type="button"><span class="btn-icon" aria-hidden="true">↺</span>Reset</button>
         </div>
       </section>
       <div class="workspace-grid">
         <section class="canvas-panel" aria-label="Sorting visualization area">
+          <div class="stats-hud" aria-label="Live sorting stats">
+            <div class="stat-chip"><span>Comparisons</span><output id="stat-comparisons">0</output></div>
+            <div class="stat-chip"><span>Moves</span><output id="stat-moves">0</output></div>
+            <div class="stat-chip"><span>Progress</span><output id="stat-progress">0%</output></div>
+          </div>
           <div class="canvas-shell">
             <canvas id="sorting-canvas" width="${defaultDimensions.width}" height="${defaultDimensions.height}"></canvas>
           </div>
-          <p class="canvas-hint">Bars scale to your viewport and stay fully visible across desktop and mobile sizes.</p>
+          <div class="progress-track" role="progressbar" aria-label="Sorting progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+            <div class="progress-fill" id="progress-fill"></div>
+          </div>
+          <p class="canvas-hint">Shortcuts: <kbd>Space</kbd> play / pause · <kbd>R</kbd> shuffle · <kbd>Esc</kbd> reset. Bar color follows value, so watch the rainbow settle into order.</p>
           <ul class="visual-legend" aria-label="Bar state legend">
             <li><span class="legend-swatch legend-neutral" aria-hidden="true"></span>Neutral</li>
             <li><span class="legend-swatch legend-compared" aria-hidden="true"></span>Compared</li>
@@ -220,6 +256,11 @@ export const bootstrapApp = (root: HTMLDivElement, options: BootstrapOptions = {
   const pauseButton = root.querySelector<HTMLButtonElement>('#pause-button')
   const resumeButton = root.querySelector<HTMLButtonElement>('#resume-button')
   const resetButton = root.querySelector<HTMLButtonElement>('#reset-button')
+  const statComparisons = root.querySelector<HTMLOutputElement>('#stat-comparisons')
+  const statMoves = root.querySelector<HTMLOutputElement>('#stat-moves')
+  const statProgress = root.querySelector<HTMLOutputElement>('#stat-progress')
+  const progressTrack = root.querySelector<HTMLDivElement>('.progress-track')
+  const progressFill = root.querySelector<HTMLDivElement>('#progress-fill')
 
   if (
     !canvas ||
@@ -235,7 +276,12 @@ export const bootstrapApp = (root: HTMLDivElement, options: BootstrapOptions = {
     !startButton ||
     !pauseButton ||
     !resumeButton ||
-    !resetButton
+    !resetButton ||
+    !statComparisons ||
+    !statMoves ||
+    !statProgress ||
+    !progressTrack ||
+    !progressFill
   ) {
     return
   }
@@ -372,9 +418,22 @@ export const bootstrapApp = (root: HTMLDivElement, options: BootstrapOptions = {
     currentInput = [...input]
     execution = executeAlgorithmWithInput(selectedAlgorithmId, currentInput)
     playback = createPlaybackController(execution.steps)
+    stepStats = buildCumulativeStepStats(execution.steps)
     initialIndexLookup = buildInitialIndexLookup(execution.steps[0]?.snapshot ?? currentInput)
     appStatus = playback.reset().status
     renderCurrentFrame()
+  }
+
+  const updateStatsHud = (stepIndex: number): void => {
+    const stats = stepStats.at(stepIndex)
+    const lastStepIndex = Math.max(1, execution.steps.length - 1)
+    const progressPercent = appStatus === 'finished' ? 100 : Math.round((stepIndex / lastStepIndex) * 100)
+
+    statComparisons.textContent = stats.comparisons.toLocaleString()
+    statMoves.textContent = stats.moves.toLocaleString()
+    statProgress.textContent = `${progressPercent}%`
+    progressFill.style.width = `${progressPercent}%`
+    progressTrack.setAttribute('aria-valuenow', String(progressPercent))
   }
 
   const renderCurrentFrame = (timestampMs = window.performance.now()): void => {
@@ -414,6 +473,7 @@ export const bootstrapApp = (root: HTMLDivElement, options: BootstrapOptions = {
     const algorithmName = algorithmMap.get(selectedAlgorithmId)?.name ?? selectedAlgorithmId
     summary.textContent = `${algorithmName} ${appStatus} at step ${playbackState.stepIndex + 1}/${execution.steps.length}.`
     meta.textContent = `Size: ${arraySize} | Speed: ${speed} | Steps: ${execution.steps.length}`
+    updateStatsHud(playbackState.stepIndex)
     updateAlgorithmDescription()
     updateControlState()
   }
@@ -526,11 +586,73 @@ export const bootstrapApp = (root: HTMLDivElement, options: BootstrapOptions = {
   resumeButton.addEventListener('click', onResume)
   resetButton.addEventListener('click', onReset)
 
+  let resizeFrameId: number | undefined
+
+  const onWindowResize = (): void => {
+    if (!canvas.isConnected) {
+      window.removeEventListener('resize', onWindowResize)
+      return
+    }
+
+    if (resizeFrameId !== undefined) {
+      return
+    }
+
+    resizeFrameId = window.requestAnimationFrame(() => {
+      resizeFrameId = undefined
+      resizeAndRender()
+    })
+  }
+
+  const onKeyDown = (event: KeyboardEvent): void => {
+    if (!canvas.isConnected) {
+      document.removeEventListener('keydown', onKeyDown)
+      return
+    }
+
+    if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) {
+      return
+    }
+
+    const target = event.target
+
+    if (
+      target instanceof HTMLButtonElement ||
+      target instanceof HTMLSelectElement ||
+      target instanceof HTMLTextAreaElement ||
+      (target instanceof HTMLInputElement && target.type !== 'range')
+    ) {
+      return
+    }
+
+    const action = resolveKeyboardAction(event.key, appStatus)
+
+    if (!action) {
+      return
+    }
+
+    event.preventDefault()
+    keyboardActionHandlers[action]()
+  }
+
+  const keyboardActionHandlers: Record<KeyboardAction, () => void> = {
+    start: onStart,
+    pause: onPause,
+    resume: onResume,
+    reset: onReset,
+    randomize: () => {
+      if (!randomizeButton.disabled) {
+        randomizeButton.click()
+      }
+    },
+  }
+
+  window.addEventListener('resize', onWindowResize)
+  document.addEventListener('keydown', onKeyDown)
+
   if (!resolvedOptions.autoplay) {
     return
   }
 
   onStart()
-
-  window.addEventListener('resize', resizeAndRender)
 }

@@ -276,4 +276,45 @@ describe('bar renderer', () => {
 
     expect(bars.map((bar) => bar.normalizedValue)).toEqual([0, 0.5, 1])
   })
+
+  it('interpolates heights when a transition cannot be expressed as positional movement', () => {
+    const { context } = createRecordingContext()
+    const fillRect = context.fillRect
+    Reflect.deleteProperty(context, 'roundRect')
+
+    renderBarsFrame(
+      context as unknown as CanvasRenderingContext2D,
+      { snapshot: [2, 9], states: ['neutral', 'neutral'] },
+      { width: 200, height: 120 },
+      flatSemantics,
+      {
+        fromSnapshot: [2, 4],
+        progress: 0.5,
+        operation: 'compare',
+        comparedIndices: [0, 1],
+        modifiedIndices: [],
+      },
+    )
+
+    const interpolatedHeight = fillRect.mock.calls[2] as unknown as number[]
+    expect(interpolatedHeight[3]).toBeGreaterThan(0)
+
+    fillRect.mockClear()
+    renderBarsFrame(
+      context as unknown as CanvasRenderingContext2D,
+      { snapshot: [3, 3, 3], states: [] },
+      { width: 200, height: 120 },
+      flatSemantics,
+      {
+        fromSnapshot: [3, 3],
+        progress: Number.NaN,
+        operation: 'swap',
+        comparedIndices: [],
+        modifiedIndices: [0.5, 1],
+      },
+    )
+
+    expect(fillRect).toHaveBeenCalledTimes(3)
+  })
 })
+
